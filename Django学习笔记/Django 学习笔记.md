@@ -237,3 +237,316 @@ urlpatterns = [
 3. 从`WebMusic`里的`urls.py`走到`musicpage`里的`urls.py`
 4. 从`musicpage`里的`urls.py`走到`views.py`中的`index`函数，我们在这个函数里些什么用户就会看到什么
 
+------
+
+#### 1. 配置环境
+
+修改musicpage/settings.py
+
+```python
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'musicpage'
+]
+```
+
+**配置数据库**
+
+在musicpage/settings.py中的DATABASES进行修改
+
+```python
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'WebMusic',
+        'USER': 'root',
+        'PASSWORD': 'Mty030726',
+        'HOST': '182.92.82.179',
+        'PORT': '3306'
+    }
+}
+```
+
+**设置pymysql库引用**
+在WebMusic目录下__init.py文件顶部增加：
+
+```python
+import pymysql
+pymysql.install_as_MySQLdb()
+```
+
+这里需要`pymysql`库来连接数据库：
+
+安装命令如下：
+
+```
+pip install pymysql
+```
+
+**创建数据库**
+创建数据库WebMusic，选择utf8mb4。
+
+**创建数据表**
+
+**生成表迁移文件**
+
+命令行执行：
+
+```python
+python3 manage.py makemigrations
+```
+
+**执行表迁移**
+
+```python
+python3 manage.py migrate
+```
+
+这时候数据库会出现django默认配置的一些表。
+
+![image-20240501211804516](image-20240501211804516.png)
+
+**后台管理**
+
+因为网站数据添加，所以需要先添加一些数据，这部分数据添加可以用django原生后台来操作。
+
+**配置时区**
+配置时区：将其修改为中国上海时区
+
+```
+TIME_ZONE = 'UTC'
+```
+
+改为
+
+```
+TIME_ZONE = 'Asia/Shanghai'
+```
+
+**配置语言**
+配置语言：将其修改为简体中文
+
+```
+LANGUAGE_CODE = 'en-us'
+```
+
+改为
+
+```
+LANGUAGE_CODE = 'zh-hans'
+```
+
+效果：
+
+![image-20240501211956076](image-20240501211956076.png)
+
+ **总结**
+
+本篇主要内容为网站开发环境配置和使用django后台管理。
+
+------
+
+#### 2. 后台歌手表模块开发
+
+表结构设计
+
+歌手表（singer）结构
+
+| 字段          | 类型         | 注释        |
+| ------------- | ------------ | ----------- |
+| id            | int(11)      | 歌手表id    |
+| name          | varchar(50)  | 用户名      |
+| pinyin        | varchar(50)  | 名称拼音    |
+| portrait      | varchar(200) | 头像链接    |
+| first_letter  | varchar(15)  | 名称首字母  |
+| gender        | tinyint(2)   | 性别0女 1男 |
+| birthday      | varchar(20)  | 生日        |
+| height        | int(4)       | 身高(cm)    |
+| weight        | int(3)       | 体重(kg)    |
+| constellation | varchar(50)  | 星座        |
+| singe_num     | int(11)      | 单曲数      |
+| album_num     | int(11)      | 专辑数      |
+| desc          | text(0)      | 简介        |
+| addtime       | int(11)      | 添加时间    |
+| updatetime    | int(11)      | 编辑时间    |
+
+**创建表模型**
+
+在musicpage工程目录下的models.py中创建歌手表模型。
+
+```python
+from django.db import models
+from datetime import date, datetime
+ 
+ 
+# Create your models here.
+class Singler(models.Model):
+    """ 歌手表模型 """
+ 
+    name = models.CharField(max_length=50, help_text='请输入歌手名称')
+    first_letter = models.CharField(max_length=15, help_text='请输入歌手名称首字母')
+    # 设置上传位置
+    portrait = models.ImageField(upload_to='uploads/%Y%m%d%H/', help_text='请上传歌手照片')
+    birthday = models.DateField(default=date.today, help_text='请选择歌手生日')
+    height = models.IntegerField(help_text='请输入歌手身高（cm）', default=0, blank=True)
+    weight = models.IntegerField(help_text='请输入歌手体重（kg）', default=0, blank=True)
+    constellation = models.CharField(max_length=50, help_text='请输入歌手星座')
+    singe_num = models.IntegerField(default=0)
+    album_num = models.IntegerField(default=0)
+    desc = models.TextField(help_text='请输入歌手简介')
+    addtime = models.DateTimeField(auto_now_add=True)
+    updatetime = models.DateTimeField(auto_now=True)
+```
+
+**设置图片上传路径**
+
+在WebMusic/settings.py中最下方设置。
+
+```python
+# 设置文件上传位置
+MEDIA_ROOT = 'static/'
+```
+
+**创建上传文件目录**
+
+在WebMusic目录下创建static文件夹。
+
+**生成表迁移**
+
+```bash
+python3 manage.py makemigrations
+```
+
+**执行创建表**
+
+```python
+python3 manage.py migrate
+```
+
+创建表结构如下：
+
+```sql
+CREATE TABLE `player_singler` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `name` varchar(50) NOT NULL,
+  `first_letter` varchar(15) NOT NULL,
+  `portrait` varchar(100) NOT NULL,
+  `birthday` date NOT NULL,
+  `height` int(11) NOT NULL,
+  `weight` int(11) NOT NULL,
+  `constellation` varchar(50) NOT NULL,
+  `singe_num` int(11) NOT NULL,
+  `album_num` int(11) NOT NULL,
+  `desc` longtext NOT NULL,
+  `addtime` datetime(6) NOT NULL,
+  `updatetime` datetime(6) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4;
+```
+
+**后台管理表模型**
+在player目录下admin.py中注册歌手表模型到后台。
+
+```python
+from django.contrib import admin
+from .models import Singler
+
+
+# Register your models here.
+
+class SinglerAdmin(admin.ModelAdmin):
+    pass
+
+
+admin.site.register(Singler, SinglerAdmin)
+```
+
+**歌手表模型操作**
+
+**新增**
+
+点击表模型旁边增加按钮，即可进入新增界面，增加一条新的歌手记录。
+
+![image-20240501213046713](image-20240501213046713.png)
+
+**编辑、删除**
+
+通过表模型数据列表，点击进入歌手数据详情。
+
+![image-20240501213129222](image-20240501213129222.png)
+
+ 歌手数据详情可编辑，也可点击下方删除按钮，删除数据。
+
+![image-20240501213152298](image-20240501213152298.png)
+
+**优化歌手记录列表**
+
+修改musicpage/admin.py。
+
+```python
+from django.contrib import admin
+from .models import Singler
+
+
+# Register your models here.
+class SinglerAdmin(admin.ModelAdmin):
+    
+    # 列表页属性
+    def get_name(self):
+        return self.name
+    get_name.short_description = '歌手名称'
+ 
+    def get_portrait(self):
+        return self.portrait
+    get_portrait.short_description = '歌手头像'
+ 
+    def get_constellation(self):
+        return self.constellation
+    get_constellation.short_description = '星座'
+ 
+    def get_height(self):
+        return str(self.height) + 'cm'
+    get_height.short_description = '身高'
+ 
+    def get_weight(self):
+        return str(self.weight) + 'kg'
+    get_weight.short_description = '体重'
+ 
+    def get_addtime(self):
+        return self.addtime
+    get_addtime.short_description = '创建时间'
+ 
+    def get_updatetime(self):
+        return self.updatetime
+    get_updatetime.short_description = '更新时间'
+ 
+    # 显示字段
+    list_display = ['id', get_name, get_portrait, get_constellation, get_height, get_weight, get_addtime, get_updatetime]
+    # 过滤器
+    list_filter = ['name', 'constellation']
+    # 搜索
+    search_fields = ['name', 'constellation']
+    # 分页
+    list_per_page = 5
+
+
+admin.site.register(Singler, SinglerAdmin)
+```
+
+**总结**
+
+在django中数据表到后台操作顺序为：
+
+创建表模型->创建表迁移文件->执行表迁移->后台注册。
+
+优化就是后台自定义管理；
+
+比较麻烦的就是，所有表操作修改都需要创建和执行表迁移。
+
+------
+
