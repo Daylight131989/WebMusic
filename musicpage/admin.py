@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Singler
+from .models import Singler, Singe, Album, Carousel
 
 
 # Register your models here.
@@ -37,11 +37,88 @@ class SinglerAdmin(admin.ModelAdmin):
     # 显示字段
     list_display = ['id', get_name, get_portrait, get_constellation, get_height, get_weight, get_addtime, get_updatetime]
     # 过滤器
-    list_filter = ['name', 'constellation']
+    list_filter = ['name']
     # 搜索
-    search_fields = ['name', 'constellation']
+    search_fields = ['name']
     # 分页
     list_per_page = 5
 
 
+class SingeAdmin(admin.ModelAdmin):
+    # 列表页属性
+    def get_name(self):
+        return self.name
+    get_name.short_description = '歌曲名称'
+    
+    def get_duration(self):
+        return self.duration
+    get_duration.short_description = '歌曲时长'
+
+    def get_addtime(self):
+        return self.addtime
+    get_addtime.short_description = '创建时间'
+
+    def get_updatetime(self):
+        return self.updatetime
+    get_updatetime.short_description = '更新时间'
+
+    # 显示字段
+    list_display = ['id', get_name, get_duration, get_addtime, get_updatetime]
+    # 过滤器
+    list_filter = ['name']
+    # 搜索
+    search_fields = ['name']
+    # 分页
+    list_per_page = 5
+
+
+class AlbumAdmin(admin.ModelAdmin):
+    # 列表页属性
+    def get_name(self):
+        return self.name
+    get_name.short_description = '专辑名称'
+
+    def get_single_num(self):
+        return self.singe_num
+    get_single_num.short_description = '单曲数'
+
+    def get_single_lang(self):
+        return self.single_lang
+    get_single_lang.short_description = '语种'
+
+    def get_addtime(self):
+        return self.addtime
+    get_addtime.short_description = '创建时间'
+
+    def get_updatetime(self):
+        return self.updatetime
+    get_updatetime.short_description = '更新时间'
+
+    # 显示字段
+    list_display = ['id', get_name, get_single_num, get_single_lang, get_addtime, get_updatetime]
+    # 过滤器
+    list_filter = ['name', 'single_lang']
+    # 搜索
+    search_fields = ['name', 'single_lang']
+    # 分页
+    list_per_page = 5
+
+
+class CarouselAdmin(admin.ModelAdmin):
+    # 列表页属性
+    def get_path(self):
+        return self.path
+    get_path.short_description = '图片路径'
+ 
+    def get_href(self):
+        return self.href
+    get_href.short_description = '跳转路径'
+ 
+    # 显示字段
+    list_display = ['id', get_path, get_href]
+
+
 admin.site.register(Singler, SinglerAdmin)
+admin.site.register(Singe, SingeAdmin)
+admin.site.register(Album, AlbumAdmin) 
+admin.site.register(Carousel, CarouselAdmin)

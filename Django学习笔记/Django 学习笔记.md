@@ -239,7 +239,7 @@ urlpatterns = [
 
 ------
 
-#### 1. 配置环境
+### 1. 配置环境
 
 修改musicpage/settings.py
 
@@ -255,7 +255,7 @@ INSTALLED_APPS = [
 ]
 ```
 
-**配置数据库**
+#### **配置数据库**
 
 在musicpage/settings.py中的DATABASES进行修改
 
@@ -272,7 +272,8 @@ DATABASES = {
 }
 ```
 
-**设置pymysql库引用**
+#### **设置pymysql库引用**
+
 在WebMusic目录下__init.py文件顶部增加：
 
 ```python
@@ -288,12 +289,13 @@ pymysql.install_as_MySQLdb()
 pip install pymysql
 ```
 
-**创建数据库**
+#### **创建数据库**
+
 创建数据库WebMusic，选择utf8mb4。
 
-**创建数据表**
+#### **创建数据表**
 
-**生成表迁移文件**
+#### **生成表迁移文件**
 
 命令行执行：
 
@@ -301,7 +303,7 @@ pip install pymysql
 python3 manage.py makemigrations
 ```
 
-**执行表迁移**
+#### **执行表迁移**
 
 ```python
 python3 manage.py migrate
@@ -311,11 +313,12 @@ python3 manage.py migrate
 
 ![image-20240501211804516](image-20240501211804516.png)
 
-**后台管理**
+#### **后台管理**
 
 因为网站数据添加，所以需要先添加一些数据，这部分数据添加可以用django原生后台来操作。
 
-**配置时区**
+#### **配置时区**
+
 配置时区：将其修改为中国上海时区
 
 ```
@@ -328,7 +331,8 @@ TIME_ZONE = 'UTC'
 TIME_ZONE = 'Asia/Shanghai'
 ```
 
-**配置语言**
+#### **配置语言**
+
 配置语言：将其修改为简体中文
 
 ```
@@ -345,15 +349,15 @@ LANGUAGE_CODE = 'zh-hans'
 
 ![image-20240501211956076](image-20240501211956076.png)
 
- **总结**
+####  **总结**
 
 本篇主要内容为网站开发环境配置和使用django后台管理。
 
 ------
 
-#### 2. 后台歌手表模块开发
+### 2. 后台歌手表模块开发
 
-表结构设计
+#### 表结构设计
 
 歌手表（singer）结构
 
@@ -375,7 +379,7 @@ LANGUAGE_CODE = 'zh-hans'
 | addtime       | int(11)      | 添加时间    |
 | updatetime    | int(11)      | 编辑时间    |
 
-**创建表模型**
+#### **创建表模型**
 
 在musicpage工程目录下的models.py中创建歌手表模型。
 
@@ -403,26 +407,60 @@ class Singler(models.Model):
     updatetime = models.DateTimeField(auto_now=True)
 ```
 
-**设置图片上传路径**
+#### 配置介绍
+
+静态资源是指项目配置的js/css/image等系统常用文件。对于一些经常变动的资源，通常放在媒体资源文件夹，比如歌手头像、歌单封面、专辑封面等。
+
+媒体资源和静态资源是可以同时存在的，两者独立运行，互不影响。
+
+#### 设置媒体资源
+
+媒体资源需要配置属性MEDIA_URL和MEDIA_ROOT。
+
+需要注意：媒体资源路径不可与静态资源路径相同。
+
+#### **设置图片上传路径**
 
 在WebMusic/settings.py中最下方设置。
 
 ```python
 # 设置文件上传位置
-MEDIA_ROOT = 'static/'
+MEDIA_URL = '/media/'
+
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 ```
 
-**创建上传文件目录**
+#### **创建上传文件目录**
 
-在WebMusic目录下创建static文件夹。
+在WebMusic目录下创建media文件夹。
 
-**生成表迁移**
+#### **注册媒体资源路由**
+
+配置属性设置后，为媒体文件夹media添加相应的路由地址，
+
+否则无法在浏览器中访问该文件夹的文件信息。
+
+在Webmusic/urls.py中设置。
+
+```python
+from django.contrib import admin
+from django.urls import path, re_path
+from django.views.static import serve
+from django.conf import settings
+ 
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    re_path('media/(?P<path>.*)', serve, {'document_root': settings.MEDIA_ROOT}, name='media'),
+]
+```
+
+#### **生成表迁移**
 
 ```bash
 python3 manage.py makemigrations
 ```
 
-**执行创建表**
+#### **执行创建表**
 
 ```python
 python3 manage.py migrate
@@ -449,7 +487,8 @@ CREATE TABLE `player_singler` (
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4;
 ```
 
-**后台管理表模型**
+#### **后台管理表模型**
+
 在player目录下admin.py中注册歌手表模型到后台。
 
 ```python
@@ -466,7 +505,7 @@ class SinglerAdmin(admin.ModelAdmin):
 admin.site.register(Singler, SinglerAdmin)
 ```
 
-**歌手表模型操作**
+#### **歌手表模型操作**
 
 **新增**
 
@@ -550,3 +589,276 @@ admin.site.register(Singler, SinglerAdmin)
 
 ------
 
+### 3. **后台单曲、专辑表模块开发**
+
+#### 表结构设计
+
+**单曲表（singe）结构**
+
+| 字段       | 类型         | 注释         |
+| ---------- | ------------ | ------------ |
+| id         | int(11)      | 单曲id       |
+| sid        | int(11)      | 所属歌手id   |
+| aid        | int(11)      | 所属专辑id   |
+| name       | varchar(50)  | 单曲名称     |
+| duration   | int(11)      | 时长（ms）   |
+| path       | varchar(200) | 歌曲文件链接 |
+| lyric      | varchar(200) | 歌词文件链接 |
+| addtime    | int(11)      | 发行时间     |
+| updatetime | int(11)      | 编辑时间     |
+
+**专辑表（album）结构**
+
+| 字段       | 类型         | 注释       |
+| ---------- | ------------ | ---------- |
+| id         | int(11)      | 单曲id     |
+| singler_id | int(11)      | 所属歌手id |
+| name       | varchar(50)  | 专辑名称   |
+| cover      | varchar(255) | 专辑封面   |
+| desc       | varchar(255) | 专辑简介   |
+| single_num | int(11)      | 单曲数     |
+| lang       | varchar(50)  | 专辑语种   |
+| addtime    | int(11)      | 创建时间   |
+| updatetime | int(11)      | 更新时间   |
+
+#### **创建表模型**
+
+在musicpage工程目录下的models.py中创建表模型。
+
+专辑和单曲表关系为多对多，需要设置一个中间关系表；在django中多对多关系，不需要主动设置，会自动创建一个隐藏中间表。
+
+内容如下：
+
+```python
+class Singe(models.Model):
+    """ 单曲表 """
+ 
+    name = models.CharField(max_length=50, help_text='请输入单曲名称')
+    duration = models.IntegerField(help_text='请输入歌曲时长（ms）')
+    path = models.FileField(upload_to=upload_save_path, help_text='请上传歌曲')
+    lyric = models.FileField(upload_to=upload_save_path, help_text='请上传歌曲单词')
+    addtime = models.DateTimeField(auto_now_add=True)
+    updatetime = models.DateTimeField(auto_now=True)
+ 
+    # 设置与歌手表关联外键
+    # 一对多外键设置在多的模型中
+    singler = models.ForeignKey("Singler", on_delete=models.CASCADE)
+ 
+ 
+class Album(models.Model):
+    """ 专辑表 """
+ 
+    name = models.CharField(max_length=50, help_text='请输入专辑名称')
+    cover = models.ImageField(upload_to=upload_save_path, help_text='请上传专辑封面图')
+    desc = models.CharField(max_length=255, help_text='请输入专辑描述')
+    single_num = models.IntegerField(default=0, help_text='请输入单曲数')
+    single_lang = models.CharField(max_length=50, help_text='请输入专辑语种')
+    addtime = models.DateTimeField(auto_now_add=True)
+    updatetime = models.DateTimeField(auto_now=True)
+ 
+    # 设置与歌手表关联外键 一对多 级联删除
+    singler = models.ForeignKey("Singler", on_delete=models.CASCADE)
+ 
+    # 设置与单曲表关联外键 多对多
+    Singe = models.ManyToManyField('Singe')
+```
+
+#### **创建表**
+
+```bash
+python3 manage.py makemigrations
+
+python3 manage.py migrate
+```
+
+这两条命令执行结束后，数据库增加musicpage_album、musicpage_singe表及关系表musicpage_album_singe
+
+表结构如下：
+
+```sql
+CREATE TABLE `player_album` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `name` varchar(50) NOT NULL,
+  `cover` varchar(100) NOT NULL,
+  `desc` varchar(255) NOT NULL,
+  `single_num` int(11) NOT NULL,
+  `single_lang` varchar(50) NOT NULL,
+  `addtime` datetime(6) NOT NULL,
+  `updatetime` datetime(6) NOT NULL,
+  `singler_id` bigint(20) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `player_album_singler_id_cde08698` (`singler_id`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4;
+ 
+CREATE TABLE `player_singe` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `name` varchar(50) NOT NULL,
+  `duration` int(11) NOT NULL,
+  `path` varchar(100) NOT NULL,
+  `lyric` varchar(100) NOT NULL,
+  `addtime` datetime(6) NOT NULL,
+  `updatetime` datetime(6) NOT NULL,
+  `singler_id` bigint(20) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `player_singe_singler_id_103f9b74` (`singler_id`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4;
+ 
+CREATE TABLE `player_album_singe` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `album_id` bigint(20) NOT NULL,
+  `singe_id` bigint(20) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `player_album_Singe_album_id_singe_id_5df36ff3_uniq` (`album_id`,`singe_id`),
+  KEY `player_album_Singe_album_id_2148d063` (`album_id`),
+  KEY `player_album_Singe_singe_id_f3856b29` (`singe_id`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4;
+```
+
+#### **后台注册表模型**
+
+在musicpage目录下admin.py中注册单曲、专辑表模型到后台。
+
+引入表
+
+```python
+from .models import Singe, Album
+```
+
+增加自定义上传文件路径方法设置。
+
+```python
+class SingeAdmin(admin.ModelAdmin):
+    # 列表页属性
+    def get_name(self):
+        return self.name
+    get_name.short_description = '歌曲名称'
+    
+    def get_duration(self):
+        return self.duration
+    get_duration.short_description = '歌曲时长'
+
+    def get_addtime(self):
+        return self.addtime
+    get_addtime.short_description = '创建时间'
+
+    def get_updatetime(self):
+        return self.updatetime
+    get_updatetime.short_description = '更新时间'
+
+    # 显示字段
+    list_display = ['id', get_name, get_duration, get_addtime, get_updatetime]
+    # 过滤器
+    list_filter = ['name']
+    # 搜索
+    search_fields = ['name']
+    # 分页
+    list_per_page = 5
+
+
+class AlbumAdmin(admin.ModelAdmin):
+    # 列表页属性
+    def get_name(self):
+        return self.name
+    get_name.short_description = '专辑名称'
+
+    def get_single_num(self):
+        return self.singe_num
+    get_single_num.short_description = '单曲数'
+
+    def get_single_lang(self):
+        return self.single_lang
+    get_single_lang.short_description = '语种'
+
+    def get_addtime(self):
+        return self.addtime
+    get_addtime.short_description = '创建时间'
+
+    def get_updatetime(self):
+        return self.updatetime
+    get_updatetime.short_description = '更新时间'
+
+    # 显示字段
+    list_display = ['id', get_name, get_single_num, get_single_lang, get_addtime, get_updatetime]
+    # 过滤器
+    list_filter = ['name', 'single_lang']
+    # 搜索
+    search_fields = ['name', 'single_lang']
+    # 分页
+    list_per_page = 5
+```
+
+
+
+#### 后台首页轮播图表模块开发
+
+**表结构设计**
+
+| 字段 | 类型         | 注释     |
+| ---- | ------------ | -------- |
+| id   | int(11)      | 自增id   |
+| path | varchar(100) | 图片路径 |
+| href | varchar(100) | 跳转路径 |
+
+#### **创建表模型**
+
+自增id不需指定，默认自动添加。
+
+```python
+class Carousel(models.Model):
+    """ 首页轮播图 """
+
+path = models.ImageField(upload_to=upload_save_path, help_text='请选择上传首页轮播图')
+href = models.CharField(max_length=100, help_text='请输入点击图片后跳转路径')
+```
+
+#### **创建表**
+
+```bash
+python manage.py makemigrations
+
+python manage.py migrate
+```
+
+#### 后台注册表模型
+
+在player/admin.py中添加轮播表模型，并注册。
+
+#### 引入表模型
+
+```python
+from .models import Carousel
+```
+
+#### 后台自定义
+
+```python
+class CarouselAdmin(admin.ModelAdmin):
+
+# 列表页属性
+
+def get_path(self):
+    return self.path
+
+get_path.short_description = '图片路径'
+
+def get_href(self):
+    return self.href
+
+get_href.short_description = '跳转路径'
+
+# 显示字段
+
+list_display = ['id', get_path, get_href]
+
+ 
+
+admin.site.register(Carousel, CarouselAdmin)
+```
+
+**总结**
+
+还是创建表模型到后台注册流程，增加了自定义上传文件设置，还有两种外键设置的方式：分别为一对多和多对多类型，其中一对多设置删除为级联方式，也就是删除一时多的一方也会被删除。
+
+------
+
+### 4. 
