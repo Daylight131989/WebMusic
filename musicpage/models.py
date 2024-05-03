@@ -60,3 +60,25 @@ class Carousel(models.Model):
     href = models.CharField(max_length=100, help_text='请输入点击图片后跳转路径')
 
 
+class SongCategory(models.Model):
+    """ 歌曲类型表 """
+ 
+    name = models.CharField(max_length=100, help_text='请输入类型名称')
+    pid = models.IntegerField(default=0, help_text='父类型id')
+ 
+ 
+class SongSheet(models.Model):
+    """ 歌单表 """
+ 
+    name = models.CharField(max_length=100, help_text='请输入歌单名称')
+    cover = models.ImageField(upload_to='uploads/sheet_cover/%Y%m%d/', help_text='请上传歌单封面图')
+    playnum = models.IntegerField(default=0, help_text='请输入播放量')
+    
+    addtime = models.DateTimeField(auto_now_add=True)
+    updatetime = models.DateTimeField(auto_now=True)
+ 
+    # 歌曲类型与歌单表 多对多关系
+    category = models.ManyToManyField('SongCategory')
+ 
+    # 歌单表与单曲表多对多关系
+    singe = models.ManyToManyField('Singe')

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Singler, Singe, Album, Carousel
+from .models import Singler, Singe, Album, Carousel, SongCategory, SongSheet
 
 
 # Register your models here.
@@ -118,7 +118,62 @@ class CarouselAdmin(admin.ModelAdmin):
     list_display = ['id', get_path, get_href]
 
 
+class SongCategoryAdmin(admin.ModelAdmin):
+ 
+    def get_name(self):
+        return self.name
+ 
+    get_name.short_description = '类型名称'
+ 
+    def get_pid(self):
+        return self.pid
+ 
+    get_pid.short_description = '类型父id'
+ 
+    # 显示字段
+    list_display = ['id', get_name, get_pid]
+    # 过滤器
+    list_filter = ['name']
+    # 搜索
+    search_fields = ['name']
+    # 分页
+    list_per_page = 10
+ 
+ 
+class SongSheetAdmin(admin.ModelAdmin):
+ 
+    def get_name(self):
+        return self.name
+ 
+    get_name.short_description = '类型名称'
+ 
+    def get_cover(self):
+        return self.cover
+ 
+    get_cover.short_description = '歌单封面'
+ 
+ 
+    def get_addtime(self):
+        return self.addtime
+ 
+    get_addtime.short_description = '创建时间'
+ 
+    def get_updatetime(self):
+        return self.updatetime
+ 
+    # 显示字段
+    list_display = ['id', get_name, get_cover]
+    # 过滤器
+    list_filter = ['name']
+    # 搜索
+    search_fields = ['name']
+    # 分页
+    list_per_page = 10
+ 
+
 admin.site.register(Singler, SinglerAdmin)
 admin.site.register(Singe, SingeAdmin)
 admin.site.register(Album, AlbumAdmin) 
 admin.site.register(Carousel, CarouselAdmin)
+admin.site.register(SongCategory, SongCategoryAdmin)
+admin.site.register(SongSheet, SongSheetAdmin)

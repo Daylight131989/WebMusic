@@ -862,3 +862,172 @@ admin.site.register(Carousel, CarouselAdmin)
 ------
 
 ### 4. 
+
+#### **歌曲类型表结构**
+
+| 字段 | 类型         | 注释                 |
+| ---- | ------------ | -------------------- |
+| id   | int(11)      | 自增id               |
+| name | varchar(100) | 歌单名称             |
+| pid  | int(11)      | 父类型id 0表明为父类 |
+
+#### 歌单表结构
+
+| 字段       | 类型         | 注释     |
+| ---------- | ------------ | -------- |
+| id         | int(11)      |          |
+| name       | varchar(100) | 歌单名称 |
+| cover      | varchar(100) | 封面路径 |
+| playnum    | int(11)      | 播放量   |
+| addtime    | int(11)      | 添加时间 |
+| updatetime | int(11)      | 更新时间 |
+
+#### **创建表模型**
+
+还是在musicpage/models.py中添加。歌单表与类型表是多对多关系，中间表不需要创建，
+
+只需要声明好关系，django会自动创建相应中间表。
+
+内容如下：
+
+```python
+class SongCategory(models.Model):
+    """ 歌曲类型表 """
+ 
+    name = models.CharField(max_length=100, help_text='请输入类型名称')
+    pid = models.IntegerField(default=0, help_text='父类型id')
+
+class SongSheet(models.Model):
+    """ 歌单表 """
+ 
+    name = models.CharField(max_length=100, help_text='请输入歌单名称')
+    cover = models.ImageField(upload_to=upload_save_path, help_text='请上传歌单封面图')
+    playnum = models.IntegerField(default=0, help_text='请输入播放量')
+    
+    addtime = models.DateTimeField(auto_now_add=True)
+    updatetime = models.DateTimeField(auto_now=True)
+ 
+    # 歌曲类型与歌单表 多对多关系
+    category = models.ManyToManyField('SongCategory')
+ 
+    # 歌单表与单曲表多对多关系
+    singe = models.ManyToManyField('Singe')
+```
+
+注意：可通过choices参数把输入框改为下拉菜单。
+
+#### **创建表**
+
+```bash
+python3 manage.py makemigrations
+
+python3 manage.py migrate
+```
+
+创建了四个表，分别为歌曲类型表、歌单表、歌单类型表、歌单单曲表；
+
+歌曲类型表和歌单表结构与表结构设计相同，不再展示；
+
+中间表结构如下：
+
+```sql
+CREATE TABLE `player_songsheet_singe` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `songsheet_id` bigint(20) NOT NULL,
+  `singe_id` bigint(20) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `player_songsheet_singe_songsheet_id_singe_id_78f26d1c_uniq` (`songsheet_id`,`singe_id`),
+  KEY `player_songsheet_singe_songsheet_id_2375e76e` (`songsheet_id`),
+  KEY `player_songsheet_singe_singe_id_022e51d3` (`singe_id`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4;
+ 
+ 
+CREATE TABLE `player_songsheet_category` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `songsheet_id` bigint(20) NOT NULL,
+  `songcategory_id` bigint(20) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `player_songsheet_categor_songsheet_id_songcategor_d9f0af95_uniq` (`songsheet_id`,`songcategory_id`),
+  KEY `player_songsheet_category_songsheet_id_80b16cc8` (`songsheet_id`),
+  KEY `player_songsheet_category_songcategory_id_397ab572` (`songcategory_id`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4;
+```
+
+可以看出中间表字段关系与设计相符，并且相应索引都已经创建。
+
+#### **后台注册表模型**
+
+在musicpage/admin.py中操作。
+
+#### **引入表模型**
+
+```python
+from .models import SongCategory, SongSheet
+```
+
+#### **后台自定义**
+
+修改默认的显示、过滤、搜索、分页。
+
+```python
+class SongCategoryAdmin(admin.ModelAdmin):
+ 
+    def get_name(self):
+        return self.name
+ 
+    get_name.short_description = '类型名称'
+ 
+    def get_pid(self):
+        return self.pid
+ 
+    get_pid.short_description = '类型父id'
+ 
+    # 显示字段
+    list_display = ['id', get_name, get_pid]
+    # 过滤器
+    list_filter = ['name']
+    # 搜索
+    search_fields = ['name']
+    # 分页
+    list_per_page = 10
+ 
+ 
+class SongSheetAdmin(admin.ModelAdmin):
+ 
+    def get_name(self):
+        return self.name
+ 
+    get_name.short_description = '类型名称'
+ 
+    def get_cover(self):
+        return self.cover
+ 
+    get_cover.short_description = '歌单封面'
+ 
+ 
+    def get_addtime(self):
+        return self.addtime
+ 
+    get_addtime.short_description = '创建时间'
+ 
+    def get_updatetime(self):
+        return self.updatetime
+ 
+    # 显示字段
+    list_display = ['id', get_name, get_cover]
+    # 过滤器
+    list_filter = ['name']
+    # 搜索
+    search_fields = ['name']
+    # 分页
+    list_per_page = 10
+ 
+admin.site.register(SongCategory, SongCategoryAdmin)
+admin.site.register(SongSheet, SongSheetAdmin)
+```
+
+**总结**
+
+表结构的设计和创建，包括后台注册操作起来大致相同，多创建一些表熟练了就简单了；
+
+至此数据表设计和创建基本完成，下一步就是数据添加和后台使用优化了。
