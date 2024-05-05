@@ -861,7 +861,7 @@ admin.site.register(Carousel, CarouselAdmin)
 
 ------
 
-### 4. 
+### 4. 配置媒体资源设置
 
 #### **歌曲类型表结构**
 
@@ -1031,3 +1031,271 @@ admin.site.register(SongSheet, SongSheetAdmin)
 表结构的设计和创建，包括后台注册操作起来大致相同，多创建一些表熟练了就简单了；
 
 至此数据表设计和创建基本完成，下一步就是数据添加和后台使用优化了。
+
+------
+
+### 5. 后台歌手功能优化及表模型名称修改、模型继承内容
+
+#### **表模型名称修改**
+
+如果要自定义这个名称，可以在Model的Meta中声明：
+
+```python
+class Singler(models.Model):
+    """ 歌手表模型 """
+ 
+    class Meta:
+        verbose_name = '歌手'
+        verbose_name_plural = '歌手'
+```
+
+效果：
+
+![image-20240505164307364](image-20240505164307364.png)
+
+然后把其他表模型都改一下名称，就不再详述。
+
+#### **模型继承**
+
+创建一个[抽象基类](https://so.csdn.net/so/search?q=抽象基类&spm=1001.2101.3001.7020)，可以把其他数据模型的公共信息放入基类中；然后当这个抽象基类被其他模型类继承后，其字段会自动添加到子类中。
+
+##### 创建抽象基类
+
+```python
+class BaseModel(models.Model):
+    """ 设置基础模型类 """
+
+addtime = models.DateTimeField(auto_now_add=True)
+updatetime = models.DateTimeField(auto_now=True)
+
+class Meta:
+    abstract = True
+```
+
+##### 其他模型继承
+
+歌手、单曲、专辑、歌单表模型继承基类模型，并去掉addtime、updatetime字段设定。
+
+```python
+class Singler(BaseModel):
+class Singe(BaseModel):
+class Album(BaseModel):
+class SongSheet(BaseModel):
+```
+
+##### **更新表结构**
+
+```bash
+python manage.py makemigrations
+
+python manage.py migrate
+```
+
+#### 歌手新增、编辑优化
+
+##### 表字段名称修改
+
+新增、编辑页面字段显示为数据表设计字段，改为中文显示。
+
+在Model中直接修改Singler字段，增加verbose_name参数。
+
+verbose_name（类型：Field.verbose_name）：admin模式中字段的显示名称。
+
+内容如下：
+
+```python
+class Singler(BaseModel):
+ 
+    class Meta:
+        verbose_name = '歌手'
+        verbose_name_plural = '歌手'
+
+    name = models.CharField(max_length=50, help_text='请输入歌手名称', verbose_name = '姓名')
+    first_letter = models.CharField(max_length=15, help_text='请输入歌手名称首字母', verbose_name = '姓名首字母')
+    # 设置上传位置
+    portrait = models.ImageField(upload_to=upload_save_path_singer_portrait, help_text='请上传歌手照片', verbose_name = '照片')
+    birthday = models.DateField(default=date.today, help_text='请选择歌手生日', verbose_name = '生日')
+    height = models.IntegerField(help_text='请输入歌手身高（cm）', default=0, blank=True, verbose_name = '身高(cm)')
+    weight = models.IntegerField(help_text='请输入歌手体重（kg）', default=0, blank=True, verbose_name = '体重(kg)')
+    constellation = models.CharField(max_length=50, help_text='请输入歌手星座', verbose_name = '星座')
+    singe_num = models.IntegerField(default=0, editable = False)
+    album_num = models.IntegerField(default=0, editable = False)
+    desc = models.TextField(help_text='请输入歌手简介', verbose_name = '简介')
+```
+
+效果：
+
+![image-20240505164718043](image-20240505164718043.png)
+
+##### 隐藏单曲数和专辑数
+
+歌手所拥有的单曲数和专辑数，应该是添加、删除单曲或专辑时动态计算出的数值，不应该是后台添加的，之前不会隐藏，经过查看表模型参数找到了设置方法。
+
+editable（类型：Field.editable）：默认值为True（真）；
+
+如果值为假，则在admin模式下不能改写。
+
+修改歌手表模型单曲数和专辑数字段，设置editable参数。
+
+内容如下：
+
+```python
+singe_num = models.IntegerField(default=0, editable=False)
+album_num = models.IntegerField(default=0, editable=False)
+```
+
+刷新后，新增歌手详情单曲数和专辑数设置不再显示。
+
+#### **姓名首字母**
+
+原有姓名首字母需要自己手动输入，改为程序自动通过输入的歌手名称取得姓名首字母。
+
+##### 安装xpinyin
+
+需要下载三方库，安装命令：
+
+```bash
+pip install xpinyin
+```
+
+##### 获取姓名首字母
+
+在musicpage/models.py中处理获取首字母并设置入库操作。
+
+```
+from xpinyin import Pinyin
+
+def get_first_letter(name):
+    """ 获取姓名中的首字母 """
+
+obj = Pinyin()
+name_pinyin = obj.get_pinyin(name, '')
+return name_pinyin[0]
+```
+
+##### 重写保存方法
+
+在Singler类中，重写父类保存方法，增加设置歌手姓名首字母。
+
+并把首字母字段设置为admin不可编辑。（其实也可以可编辑，英文名字只保存第一个单词的首字母，中文歌手可以使用这个，禁止编辑随便）
+
+```python
+class Singler(models.Model):
+    """ 歌手表模型 """
+ 
+    ......
+ 
+    def save(self, force_insert=False, force_update=False, using=None,
+             update_fields=None):
+        """ 重写save方法 """
+ 
+        self.first_letter = get_first_letter(self.name)
+        super().save()
+```
+
+#### **歌手列表页优化**
+
+##### 将保存地址改成函数存储
+
+在歌手类中加入这个函数
+
+```python
+def upload_save_path_singer_portrait(instance, filename):
+        """ 上传文件保存路径 """
+        # 获取当前日期并格式化为YYYYMMDD形式的字符串
+        date_string = time.strftime("%Y%m%d", time.localtime())
+        return 'uploads/singer_portrait/' + date_string + '/{0}'.format(filename)
+```
+
+然后把portrait改成这样
+
+```python
+portrait = models.ImageField(upload_to=upload_save_path_singer_portrait, help_text='请上传歌手照片', verbose_name = '照片')
+```
+
+其他需要保存的音频或者图片也按照这样做
+
+##### **图片显示处理**
+
+修改后台歌手表，在player中的admins.py中的SinglerAdmin。
+
+需要使用format_html()函数。
+
+##### 引入函数
+
+```python
+from django.utils.html import format_html
+```
+
+##### 路径改为显示图片
+
+```python
+class SinglerAdmin(admin.ModelAdmin):
+ 
+    def get_portrait(self):
+        return format_html(
+            '<img src="/media/{}" width="100px" height="100px"/>',
+            self.portrait,
+        )
+    get_portrait.short_description = '歌手头像'
+```
+
+一定要像我这样在前面加上`/media`，要不然会找不到地址的。
+
+原因：django从view向template传递HTML字符串的时候，django默认不渲染此HTML，原因是为了防止这段字符串里面有恶意攻击的代码。所以要把列表的图片路径改为显示图片，需要使用函数，通过函数的{}占位符，把图片路径赋值给HTML元素img。
+
+效果：
+
+![b81081cd3f8ce8779f7bc3b142de88a](b81081cd3f8ce8779f7bc3b142de88a.png)
+
+##### **修改列表默认设置**
+
+适用于列表某字段为空时，设置显示内容。
+
+比如歌手的身高体重都为默认0时。
+
+内容如下：
+
+```python
+def get_height(self):
+    if self.height < 1:
+        return '——'
+    else:
+        return str(self.height) + 'cm'
+ 
+get_height.short_description = '身高'
+ 
+def get_weight(self):
+    if self.weight < 1:
+        return '——'
+    else:
+        return str(self.weight) + 'kg'
+```
+
+##### 修改列表排序
+
+通过Meta类来给模型赋予元数据，设定ordering排序。
+
+```python
+class Singler(models.Model):
+    """ 歌手表模型 """
+
+class Meta:
+    verbose_name = '歌手'
+    verbose_name_plural = '歌手'
+
+    # 正序
+
+​    ordering = ['first_letter']
+
+    # 倒序
+
+    # ordering = ['-first_letter']
+```
+
+总结
+
+本篇主要是在添加编辑过程中对后台歌手功能优化及表模型名称修改、模型继承内容。
+
+### 6. 
+

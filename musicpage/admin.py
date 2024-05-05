@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import Singler, Singe, Album, Carousel, SongCategory, SongSheet
+from django.utils.html import format_html
 
 
 # Register your models here.
@@ -11,7 +12,10 @@ class SinglerAdmin(admin.ModelAdmin):
     get_name.short_description = '歌手名称'
  
     def get_portrait(self):
-        return self.portrait
+        return format_html(
+            '<img src="/media/{}" width="100px" height="100px"/>',
+            self.portrait,
+        )
     get_portrait.short_description = '歌手头像'
  
     def get_constellation(self):
@@ -19,11 +23,17 @@ class SinglerAdmin(admin.ModelAdmin):
     get_constellation.short_description = '星座'
  
     def get_height(self):
-        return str(self.height) + 'cm'
+        if self.height < 1:
+            return '——'
+        else:
+            return str(self.height) + 'cm'
     get_height.short_description = '身高'
- 
+    
     def get_weight(self):
-        return str(self.weight) + 'kg'
+        if self.weight < 1:
+            return '——'
+        else:
+            return str(self.weight) + 'kg'
     get_weight.short_description = '体重'
  
     def get_addtime(self):
@@ -77,6 +87,13 @@ class AlbumAdmin(admin.ModelAdmin):
     def get_name(self):
         return self.name
     get_name.short_description = '专辑名称'
+
+    def get_cover(self):
+        return format_html(
+            '<img src="/media/{}" width="100px" height="100px"/>',
+            self.cover,
+        )
+    get_cover.short_description = '专辑封面'
 
     def get_single_num(self):
         return self.singe_num
