@@ -27,6 +27,14 @@ def get_first_letter(name):
     name_pinyin = obj.get_pinyin(name, '')
     return name_pinyin[0]
 
+def get_album_singler_num(singler_id):
+    """
+    获取专辑表中所属歌手数
+    :param singler_id:
+    :return:
+    """
+    return Album.objects.filter(singler_id=singler_id).count()
+
 class BaseModel(models.Model):
     """ 设置基础模型类 """
 
@@ -145,18 +153,20 @@ class Album(BaseModel):
     Singe = models.ManyToManyField('Singe', verbose_name='单曲', help_text='请选择单曲')
  
     def save(self, force_insert=False, force_update=False, using=None,
-             update_fields=None):
+         update_fields=None):
         """ 重写save方法 处理单曲数和歌手专辑数 """
- 
+    
+        super().save()
+    
         # 获取选中的单曲字典
         sing_set = self.Singe.all()
         single_num = len(sing_set)
         # 更新单曲数
         self.single_num = single_num
- 
+    
         # 获取所属歌手专辑数
         album_num = get_album_singler_num(self.singler_id)
- 
+    
         super().save()
         # 更新歌手表-专辑数
         Singler.objects.filter(pk=self.singler_id).update(album_num=album_num)

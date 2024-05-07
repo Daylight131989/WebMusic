@@ -102,8 +102,12 @@ class AlbumAdmin(admin.ModelAdmin):
         )
     get_cover.short_description = '专辑封面'
 
+    def get_singler(self):
+        return self.singler
+    get_singler.short_description = '歌手'
+
     def get_single_num(self):
-        return self.singe_num
+        return self.single_num
     get_single_num.short_description = '单曲数'
 
     def get_single_lang(self):
@@ -119,7 +123,7 @@ class AlbumAdmin(admin.ModelAdmin):
     get_updatetime.short_description = '更新时间'
 
     # 显示字段
-    list_display = ['id', get_name, get_single_num, get_single_lang, get_addtime, get_updatetime]
+    list_display = ['id', get_name, get_cover, get_singler, get_single_num, get_single_lang, get_addtime, get_updatetime]
     # 过滤器
     list_filter = ['name', 'single_lang']
     # 搜索
@@ -131,7 +135,10 @@ class AlbumAdmin(admin.ModelAdmin):
 class CarouselAdmin(admin.ModelAdmin):
     # 列表页属性
     def get_path(self):
-        return self.path
+        return format_html(
+            '<img src="/media/{}" width="200px" height="100px"/>',
+            self.path
+        )
     get_path.short_description = '图片路径'
  
     def get_href(self):
