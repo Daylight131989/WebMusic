@@ -1,4 +1,4 @@
-# Django 学习笔记
+# 基于Django的音乐网站开发笔记
 
 创建项目：
 
@@ -1246,7 +1246,7 @@ class SinglerAdmin(admin.ModelAdmin):
 
 效果：
 
-![b81081cd3f8ce8779f7bc3b142de88a](b81081cd3f8ce8779f7bc3b142de88a.png)
+![image-20240505164718044](image-20240505164718044.png)
 
 ##### **修改列表默认设置**
 
@@ -1297,5 +1297,196 @@ class Meta:
 
 本篇主要是在添加编辑过程中对后台歌手功能优化及表模型名称修改、模型继承内容。
 
-### 6. 
+### 6. 单曲原有功能的基础上进行部分功能实现和显示优化
+
+#### **歌手下拉显示修改**
+
+新增时选择歌手显示为对象，无法确认歌手。
+
+![image-20240505164718045](image-20240505164718045.png)
+
+需修改Singler表模型，增加__str__方法
+
+内容如下：
+
+```python
+def __str__(self):
+    """ 修改返回格式 """
+    return self.name
+```
+
+ 效果：
+
+![image-20240505184726882](image-20240505184726882.png)
+
+#### **设置歌曲时长**
+
+歌曲时长的值从输入框填写改为后台设置为读取歌曲文件获取的时长。
+
+##### 安装eyed3库
+
+命令如下：
+
+```
+pip install eyed3
+```
+
+##### 获取mp3时长
+
+内容如下：
+
+```python
+import eyed3
+ 
+ 
+def get_duration_mp3(file_path):
+    """ 获取mp3音频文件时长 """
+ 
+    info = eyed3.load(file_path)
+    return info.info.time_secs
+```
+
+##### 歌曲时长字段修改
+
+修改Singe Model类
+
+首先把歌曲时长字段设置为admin不可改写。
+
+```python
+duration = models.IntegerField(editable=False)
+```
+
+##### 重写save方法
+
+在重写save方法的内部，需要先调取父类保存方法后文件会被保存到相应路径，
+
+之后才会有文件路径，读取MP3文件获取文件时长后，再存储一次；至于简单的方法因为对django还在学习中，暂时没发现。
+
+```python
+def save(self, force_insert=False, force_update=False, using=None,
+         update_fields=None):
+        """ 重写save方法 处理歌曲时长 """
+
+        if not self.duration: """一定要给duration设置初值！！！排查了一天才发现"""
+            self.duration = 0
+
+        super().save()
+        path_name = str(self.path.name)
+        if path_name.endswith(".mp3"):
+            save_path = os.path.join(settings.MEDIA_ROOT, path_name)
+            print(save_path)
+            self.duration = get_duration_mp3(save_path)
+            print(self.duration)
+        super().save()
+```
+
+#### **增加歌手单曲数量**
+
+需要在增加相应歌手关联单曲时同时增加该歌手的单曲数量。
+
+##### **查询歌手单曲数量**
+
+在musicpage/models.py中新增方法，通过单曲表歌手外键id查询相应歌手拥有单曲数量。
+
+内容如下：
+
+```python
+def get_singe_singler_num(singler_id):
+    """
+    获取单曲表中所属歌手数
+    :param singler_id:
+    :return:
+    """
+    return Singe.objects.filter(singler_id=singler_id).count()
+```
+
+**同步歌手单曲数量**
+
+单曲保存时处理歌手单曲数量，修改单曲表模型save方法，在最后保存前增加处理。
+
+内容如下：
+
+```python
+def save(self, force_insert=False, force_update=False, using=None,
+     update_fields=None):
+    """ 重写save方法 处理歌曲时长 """
+
+    if not self.duration:
+        self.duration = 0
+
+    super().save()
+    path_name = str(self.path.name)
+    if path_name.endswith(".mp3"):
+        save_path = os.path.join(settings.MEDIA_ROOT, path_name)
+        self.duration = get_duration_mp3(save_path)
+    # 获取相应歌手单曲数
+    singe_num = get_singe_singler_num(self.singler_id)
+    # 更新相应歌手的单曲数
+    Singler.objects.filter(pk=self.singler_id).update(singe_num=singe_num)
+    super().save()
+```
+
+#### **列表显示**
+
+##### **显示歌手名称**
+
+单曲列表关联歌手外键id，如果需要显示歌手名称，也需要修改否则只显示外键id。
+
+##### **获取歌手名称**
+
+在musicpage/admin.py中设置方法，通过外键id去查询相应歌手信息。
+
+内容如下：
+
+```python
+def get_singler_name(id):
+    """
+    获取歌手名称
+    :param id:歌手id
+    :return:
+    """
+    return Singler.objects.get(pk=id)
+```
+
+##### **设置歌手名称显示**
+
+修改后台单曲类中外键字段自定义显示处理。
+
+```python
+class SingeAdmin(admin.ModelAdmin):
+    """ 后台单曲类 """
+ 
+    ......
+ 
+    def get_singler_id(self):
+        return get_singler_name(self.singler_id)
+ 
+    get_singler_id.short_description = '歌手'
+```
+
+#### **列表显示歌曲时长**
+
+修改后台单曲类，增加显示歌曲时长字段。
+
+```python
+def get_duration(self):
+    seconds = self.duration
+    minutes, seconds = divmod(seconds, 60)
+    duration_str = '{:02d}:{:02d}'.format(minutes, seconds)
+    return duration_str
+get_duration.short_description = '歌曲时长'
+ 
+# 显示字段
+list_display = ['id', get_name, get_singler_id, get_duration, get_addtime, get_updatetime]
+```
+
+总体效果：
+
+![image-20240507213717597](image-20240507213717597.png)
+
+**总结**
+
+对后台单曲模块进行部分功能优化，主要通过新增编辑和列表两方面来进行优化。
+
+### 7. 专辑、首页轮播图原有功能的基础上进行部分功能实现和显示优化
 

@@ -59,9 +59,16 @@ class SingeAdmin(admin.ModelAdmin):
     def get_name(self):
         return self.name
     get_name.short_description = '歌曲名称'
+
+    def get_singler(self):
+        return self.singler
+    get_singler.short_description = '歌手'
     
     def get_duration(self):
-        return self.duration
+        seconds = self.duration
+        minutes, seconds = divmod(seconds, 60)
+        duration_str = '{:02d}:{:02d}'.format(minutes, seconds)
+        return duration_str
     get_duration.short_description = '歌曲时长'
 
     def get_addtime(self):
@@ -73,7 +80,7 @@ class SingeAdmin(admin.ModelAdmin):
     get_updatetime.short_description = '更新时间'
 
     # 显示字段
-    list_display = ['id', get_name, get_duration, get_addtime, get_updatetime]
+    list_display = ['id', get_name, get_singler, get_duration, get_addtime, get_updatetime]
     # 过滤器
     list_filter = ['name']
     # 搜索

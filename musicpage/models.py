@@ -2,6 +2,23 @@ from django.db import models
 from datetime import date, datetime
 from xpinyin import Pinyin
 import time
+import eyed3
+import os
+from django.conf import settings
+
+def get_singe_singler_num(singler_id):
+    """
+    获取单曲表中所属歌手数
+    :param singler_id:
+    :return:
+    """
+    return Singe.objects.filter(singler_id=singler_id).count()
+
+def get_duration_mp3(file_path):
+        """ 获取mp3音频文件时长 """
+    
+        info = eyed3.load(file_path)
+        return info.info.time_secs
 
 def get_first_letter(name):
     """获取姓名中的首字母"""
@@ -23,6 +40,10 @@ class BaseModel(models.Model):
 class Singler(BaseModel):
     """ 歌手表模型 """
     
+    def __str__(self):
+        """ 修改返回格式 """
+        return self.name
+
     def upload_save_path_singer_portrait(instance, filename):
         """ 上传文件保存路径 """
         # 获取当前日期并格式化为YYYYMMDD形式的字符串
@@ -56,51 +77,89 @@ class Singe(BaseModel):
     
     def upload_save_path_songs_path(instance, filename):
         """ 上传文件保存路径 """
-    
-        return 'uploads/songs_path/' + str(int(time.time())) + '/{0}'.format(filename)
+        date_string = time.strftime("%Y%m%d", time.localtime())
+        return 'uploads/songs_path/' + date_string + '/{0}'.format(filename)
 
     def upload_save_path_songs_lyric(instance, filename):
         """ 上传文件保存路径 """
-
-        return 'uploads/songs_lyric/' + str(int(time.time())) + '/{0}'.format(filename)
+        date_string = time.strftime("%Y%m%d", time.localtime())
+        return 'uploads/songs_lyric/' + date_string + '/{0}'.format(filename)
 
     class Meta:
         verbose_name = '单曲'
         verbose_name_plural = '单曲'
 
     name = models.CharField(max_length=50, help_text='请输入单曲名称', verbose_name = '单曲名称')
-    duration = models.IntegerField(help_text='请输入歌曲时长（ms）', verbose_name = '歌曲时长')
+    duration = models.IntegerField(editable=False)
     path = models.FileField(upload_to=upload_save_path_songs_path, help_text='请上传歌曲', verbose_name = '歌曲')
     lyric = models.FileField(upload_to=upload_save_path_songs_lyric, help_text='请上传歌曲单词', verbose_name = '歌词')
  
     # 设置与歌手表关联外键
     # 一对多外键设置在多的模型中
     singler = models.ForeignKey("Singler", on_delete=models.CASCADE, verbose_name = '歌手')
+
+    def save(self, force_insert=False, force_update=False, using=None,
+         update_fields=None):
+        """ 重写save方法 处理歌曲时长 """
+
+        if not self.duration:
+            self.duration = 0
+
+        super().save()
+        path_name = str(self.path.name)
+        if path_name.endswith(".mp3"):
+            save_path = os.path.join(settings.MEDIA_ROOT, path_name)
+            self.duration = get_duration_mp3(save_path)
+        # 获取相应歌手单曲数
+        singe_num = get_singe_singler_num(self.singler_id)
+        # 更新相应歌手的单曲数
+        Singler.objects.filter(pk=self.singler_id).update(singe_num=singe_num)
+        super().save()
+
  
  
 class Album(BaseModel):
     """ 专辑表 """
-
+ 
     def upload_save_path_album_cover(instance, filename):
         """ 上传文件保存路径 """
 
         return 'uploads/album_cover/' + str(int(time.time())) + '/{0}'.format(filename)
-    
+
     class Meta:
         verbose_name = '专辑'
         verbose_name_plural = '专辑'
-
-    name = models.CharField(max_length=50, help_text='请输入专辑名称', verbose_name = '专辑名称')
-    cover = models.ImageField(upload_to=upload_save_path_album_cover, help_text='请上传专辑封面图', verbose_name = '专辑封面')
-    desc = models.CharField(max_length=255, help_text='请输入专辑描述', verbose_name = '专辑描述')
-    single_num = models.IntegerField(default=0, help_text='请输入单曲数', verbose_name = '单曲数')
-    single_lang = models.CharField(max_length=50, help_text='请输入专辑语种', verbose_name = '语种')
  
-    # 设置与歌手表关联外键 一对多 级联删除
-    singler = models.ForeignKey("Singler", on_delete=models.CASCADE, verbose_name = '歌手')
+    name = models.CharField('专辑名称', max_length=50, help_text='请输入专辑名称')
+    cover = models.ImageField('专辑封面', upload_to=upload_save_path_album_cover, help_text='请上传专辑封面图')
+    desc = models.CharField('专辑描述', max_length=255, help_text='请输入专辑描述')
+    single_num = models.IntegerField(default=0, editable=False)
+ 
+    langs = [('国语', '国语'), ('普通话', '普通话'), ('英语', '英语'), ('日韩', '日韩')]
+    single_lang = models.CharField('专辑语种', max_length=50, choices=langs, help_text='请选择专辑语种')
+ 
+    # 设置与歌手表关联外键 一对多
+    singler = models.ForeignKey("Singler", on_delete=models.CASCADE, verbose_name='歌手', help_text='请选择歌手')
  
     # 设置与单曲表关联外键 多对多
-    Singe = models.ManyToManyField('Singe', verbose_name = '单曲')
+    Singe = models.ManyToManyField('Singe', verbose_name='单曲', help_text='请选择单曲')
+ 
+    def save(self, force_insert=False, force_update=False, using=None,
+             update_fields=None):
+        """ 重写save方法 处理单曲数和歌手专辑数 """
+ 
+        # 获取选中的单曲字典
+        sing_set = self.Singe.all()
+        single_num = len(sing_set)
+        # 更新单曲数
+        self.single_num = single_num
+ 
+        # 获取所属歌手专辑数
+        album_num = get_album_singler_num(self.singler_id)
+ 
+        super().save()
+        # 更新歌手表-专辑数
+        Singler.objects.filter(pk=self.singler_id).update(album_num=album_num)
 
 
 class Carousel(models.Model):
