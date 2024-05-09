@@ -83,6 +83,9 @@ class Singler(BaseModel):
 class Singe(BaseModel):
     """ 单曲表 """
     
+    def __str__(self):
+        return str(self.name) + ' - ' + str(self.singler)
+
     def upload_save_path_songs_path(instance, filename):
         """ 上传文件保存路径 """
         date_string = time.strftime("%Y%m%d", time.localtime())
@@ -128,11 +131,15 @@ class Singe(BaseModel):
  
 class Album(BaseModel):
     """ 专辑表 """
+
+    def __str__(self):
+        """ 修改返回格式 """
+        return self.name
  
     def upload_save_path_album_cover(instance, filename):
         """ 上传文件保存路径 """
-
-        return 'uploads/album_cover/' + str(int(time.time())) + '/{0}'.format(filename)
+        date_string = time.strftime("%Y%m%d", time.localtime())
+        return 'uploads/album_cover/' + date_string + '/{0}'.format(filename)
 
     class Meta:
         verbose_name = '专辑'
@@ -181,8 +188,8 @@ class Carousel(models.Model):
 
     def upload_save_path_carousel_cover(instance, filename):
         """ 上传文件保存路径 """
-
-        return 'uploads/carousel_cover/' + str(int(time.time())) + '/{0}'.format(filename)
+        date_string = time.strftime("%Y%m%d", time.localtime())
+        return 'uploads/carousel_cover/' + date_string + '/{0}'.format(filename)
 
     path = models.ImageField(upload_to=upload_save_path_carousel_cover, help_text='请选择上传首页轮播图', verbose_name = '首页轮播图')
     href = models.CharField(max_length=100, help_text='请输入点击图片后跳转路径', verbose_name = '跳转路径')
@@ -191,21 +198,38 @@ class Carousel(models.Model):
 class SongCategory(models.Model):
     """ 歌曲类型表 """
     
+    def __str__(self):
+        return self.name
+
     class Meta:
         verbose_name = '歌曲类型'
         verbose_name_plural = '歌曲类型'
+
+    categoryChoice = [
+    (0, '默认'), 
+    (1, '主题'), 
+    (2, '心情'),
+    (3, '场景'),
+    (4, '年代'),
+    (5, '曲风流派'), 
+    (6, '语言')
+    ]
     
     name = models.CharField(max_length=100, help_text='请输入类型名称', verbose_name = '类型名称')
-    pid = models.IntegerField(default=0, help_text='父类型id', verbose_name = '父类型id')
+    pid = models.IntegerField(default=0, help_text='父类型id', choices = categoryChoice, verbose_name = '父类型id')
  
  
 class SongSheet(BaseModel):
     """ 歌单表 """
+
+    def __str__(self):
+        """ 修改返回格式 """
+        return self.name
     
     def upload_save_path_sheet_cover(instance, filename):
         """ 上传文件保存路径 """
-
-        return 'uploads/sheet_cover/' + str(int(time.time())) + '/{0}'.format(filename)
+        date_string = time.strftime("%Y%m%d", time.localtime())
+        return 'uploads/sheet_cover/' + date_string + '/{0}'.format(filename)
 
     class Meta:
         verbose_name = '歌单'
@@ -213,7 +237,8 @@ class SongSheet(BaseModel):
         
     name = models.CharField(max_length=100, help_text='请输入歌单名称', verbose_name = '歌单名称')
     cover = models.ImageField(upload_to=upload_save_path_sheet_cover, help_text='请上传歌单封面图', verbose_name = '歌单封面')
-    playnum = models.IntegerField(default=0, help_text='请输入播放量', verbose_name = '播放量')
+    playnum = models.IntegerField(default=0, editable=False)
+    desc = models.TextField('歌单描述', default='', max_length=200, help_text='请输入歌单描述')
  
     # 歌曲类型与歌单表 多对多关系
     category = models.ManyToManyField('SongCategory', verbose_name = '歌曲类型')

@@ -51,7 +51,7 @@ class SinglerAdmin(admin.ModelAdmin):
     # 搜索
     search_fields = ['name']
     # 分页
-    list_per_page = 5
+    list_per_page = 10
 
 
 class SingeAdmin(admin.ModelAdmin):
@@ -153,18 +153,27 @@ class SongCategoryAdmin(admin.ModelAdmin):
  
     def get_name(self):
         return self.name
- 
     get_name.short_description = '类型名称'
  
     def get_pid(self):
-        return self.pid
- 
+        categoryChoice = [
+            (0, '默认'),
+            (1, '主题'),
+            (2, '心情'),
+            (3, '场景'),
+            (4, '年代'),
+            (5, '曲风流派'),
+            (6, '语言')
+        ]
+        for index, item in categoryChoice:
+            if index == self.pid:
+                return item
     get_pid.short_description = '类型父id'
  
     # 显示字段
     list_display = ['id', get_name, get_pid]
     # 过滤器
-    list_filter = ['name']
+    list_filter = ['name', 'pid']
     # 搜索
     search_fields = ['name']
     # 分页
@@ -179,9 +188,22 @@ class SongSheetAdmin(admin.ModelAdmin):
     get_name.short_description = '类型名称'
  
     def get_cover(self):
-        return self.cover
- 
+        return format_html(
+            '<img src="/media/{}" width="100px" height="100px"/>',
+            self.cover,
+        )
+
     get_cover.short_description = '歌单封面'
+
+    def get_desc(self):
+        return self.desc
+ 
+    get_desc.short_description = '歌单描述'
+
+    def get_playnum(self):
+        return self.playnum
+ 
+    get_playnum.short_description = '播放量'
  
  
     def get_addtime(self):
@@ -191,9 +213,11 @@ class SongSheetAdmin(admin.ModelAdmin):
  
     def get_updatetime(self):
         return self.updatetime
+
+    get_updatetime.short_description = '编辑时间'
  
     # 显示字段
-    list_display = ['id', get_name, get_cover]
+    list_display = ['id', get_name, get_cover, get_desc, get_playnum, get_addtime, get_updatetime]
     # 过滤器
     list_filter = ['name']
     # 搜索
